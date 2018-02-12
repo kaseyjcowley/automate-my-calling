@@ -1,15 +1,12 @@
 const Nightmare = require('nightmare');
 const arraySync = require('array-sync');
-// const mysql = require('mysql');
+const mysql = require('mysql');
+const {promisify} = require('util');
 const ldsOrg = require('./constants');
 
 require('dotenv').config();
 
-const nightmare = Nightmare({show: true, width: 1920, height: 1080});
-
-// const connection = mysql.createConnection({
-//   host: 'localhost',
-// });
+const nightmare = Nightmare({show: false, width: 1920, height: 1080});
 
 nightmare
   .goto(ldsOrg.LRC_URL)
@@ -36,11 +33,44 @@ nightmare
   .evaluate(
     selector =>
       // Grab the names of the members
-      [...document.querySelectorAll(selector)].map(cell => cell.innerText),
+      [...document.querySelectorAll(selector)]
+        .map(cell => cell.innerText)
+        .sort((a, b) => a.localeCompare(b)),
     ldsOrg.MEMBER_NAME_SELECTOR
   )
-  .then(names => {
-    console.log('member rows', names);
+  .then(async updatedMembers => {
+    const connection = mysql.createConnection({
+      host: '127.0.0.1',
+      user: process.env.DB_USERNAME,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_DATABASE,
+    });
+
+    connection.connect();
+
+    const query = promisify(connection.query).bind(connection);
+
+    // Grab the existing members
+    const rows = await query('SELECT name FROM members ORDER BY name');
+    const sourceMembers = rows.map(row => row.name);
+    const syncResults = await arraySync(sourceMembers, updatedMembers);
+
+    // Do the removals first
+    if (syncResults.remove.length > 0) {
+      query('DELETE FROM members WHERE `name` IN ? LIMIT ?', [
+        [syncResults.remove],
+        syncResults.remove.length,
+      ]);
+    }
+
+    // Next do the additions
+    if (syncResults.create.length > 0) {
+      query('INSERT INTO members (name) VALUES ?', [
+        syncResults.create.map(member => [member]),
+      ]);
+    }
+
+    connection.end();
 
     nightmare.end().catch(function(error) {
       console.error('Error:', error);
