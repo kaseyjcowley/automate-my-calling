@@ -9,6 +9,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "nightmare": "^2.10.0"
+    "array-sync": "2.0.0",
+    "dotenv": "5.0.0",
+    "mysql": "2.15.0",
+    "nightmare": "2.10.0"
   }
 }
