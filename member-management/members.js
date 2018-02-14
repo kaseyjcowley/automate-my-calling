@@ -25,6 +25,14 @@ class Members {
   }
 
   async insert(names) {
+    // Create a trigger to insert a row in the visits table for new members.
+    this.query(`
+      CREATE TRIGGER member_added
+      AFTER INSERT ON members
+      FOR EACH ROW
+      INSERT INTO visits (member_id) VALUES (NEW.id)
+    `);
+
     this.query('INSERT INTO members (name) VALUES ?', [names]);
   }
 
