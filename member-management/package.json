@@ -12,6 +12,7 @@
     "array-sync": "2.0.0",
     "dotenv": "5.0.0",
     "mysql": "2.15.0",
-    "nightmare": "2.10.0"
+    "nightmare": "2.10.0",
+    "rollbar": "2.3.8"
   }
 }
