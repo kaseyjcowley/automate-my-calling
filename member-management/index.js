@@ -1,12 +1,20 @@
 const Nightmare = require('nightmare');
 const arraySync = require('array-sync');
 const {promisify} = require('util');
+const Rollbar = require('rollbar');
 const ldsOrg = require('./constants');
 const Members = require('./members');
 
 require('dotenv').config();
 
 const nightmare = Nightmare({show: false, width: 1920, height: 1080});
+const rollbar = new Rollbar({
+  accessToken: process.env.ROLLBAR_TOKEN,
+  captureUncaught: true,
+  captureUnhandledRejections: true,
+});
+
+const start = new Date();
 
 nightmare
   .goto(ldsOrg.LRC_URL)
@@ -45,20 +53,32 @@ nightmare
     const rows = await members.all(['name']);
     const sourceMembers = rows.map(row => row.name);
     const syncResults = await arraySync(sourceMembers, updatedMembers);
+    let numberRemoved = 0;
+    let numberAdded = 0;
 
     // Do the removals first
     if (syncResults.remove.length > 0) {
-      members.removeByName(syncResults.remove);
+      numberRemoved = members.removeByName(syncResults.remove);
     }
 
     // Next do the additions
     if (syncResults.create.length > 0) {
-      members.insert(syncResults.create.map(member => [member]));
+      numberAdded = members.insert(syncResults.create.map(member => [member]));
     }
 
     members.close();
 
-    nightmare.end().catch(function(error) {
-      console.error('Error:', error);
-    });
+    nightmare
+      .end(() => {
+        const finish = new Date();
+        const secondsElapsed = (finish.getTime() - start.getTime()) / 1000;
+
+        rollbar.info(`
+          Member sync finished.
+
+          Results: ${numberRemoved} members removed. ${numberAdded} members added.
+          Time elapsed: ${secondsElapsed} seconds.
+        `);
+      })
+      .catch(rollbar.error(error));
   });
