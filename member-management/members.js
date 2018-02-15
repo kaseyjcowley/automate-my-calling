@@ -25,15 +25,20 @@ class Members {
   }
 
   async insert(names) {
-    // Create a trigger to insert a row in the visits table for new members.
-    this.query(`
-      CREATE TRIGGER member_added
-      AFTER INSERT ON members
-      FOR EACH ROW
-      INSERT INTO visits (member_id) VALUES (NEW.id)
-    `);
+    const results = await this.query('INSERT INTO members (name) VALUES ?', [
+      names,
+    ]);
 
-    this.query('INSERT INTO members (name) VALUES ?', [names]);
+    // If we inserted more than one record, return the affected rows, otherwise return the insertId
+    if (names.length > 1) {
+      const {affectedRows} = await this.query(
+        'SELECT ROW_COUNT() AS affectedRows'
+      );
+
+      return affectedRows;
+    }
+
+    return results.insertId;
   }
 
   async removeByName(names) {
