@@ -13,6 +13,8 @@
     "dotenv": "5.0.0",
     "mysql": "2.15.0",
     "nightmare": "2.10.0",
-    "rollbar": "2.3.8"
+    "rollbar": "2.3.8",
+    "sequelize": "4.33.4",
+    "sequelize-cli": "4.0.0"
   }
 }
