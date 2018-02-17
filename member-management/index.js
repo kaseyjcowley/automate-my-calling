@@ -1,18 +1,13 @@
+require('dotenv').config();
+
 const Nightmare = require('nightmare');
 const arraySync = require('array-sync');
 const {promisify} = require('util');
-const Rollbar = require('rollbar');
 const ldsOrg = require('./constants');
 const Members = require('./members');
-
-require('dotenv').config();
+const Rollbar = require('./rollbar');
 
 const nightmare = Nightmare({show: false, width: 1920, height: 1080});
-const rollbar = new Rollbar({
-  accessToken: process.env.ROLLBAR_TOKEN,
-  captureUncaught: true,
-  captureUnhandledRejections: true,
-});
 
 const start = new Date();
 
@@ -73,12 +68,12 @@ nightmare
         const finish = new Date();
         const secondsElapsed = (finish.getTime() - start.getTime()) / 1000;
 
-        rollbar.info(`
+        Rollbar.info(`
           Member sync finished.
 
           Results: ${numberRemoved} members removed. ${numberAdded} members added.
           Time elapsed: ${secondsElapsed} seconds.
         `);
       })
-      .catch(rollbar.error(error));
+      .catch(Rollbar.error);
   });
